@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2e4b3c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="My Desk">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>My Desk</title>
+<style>
+  :root{
+    --bg:#f3eee4; --card:#fbf8f2; --ink:#2b3a30; --sub:#6b6f5e;
+    --green:#2e4b3c; --green2:#4f6b4a; --olive:#7d7f3f;
+    --terra:#b95f3c; --terra-soft:#f1dccf; --line:#ddd5c5;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Hiragino Sans","Noto Sans JP","Yu Gothic UI",system-ui,sans-serif;
+    -webkit-tap-highlight-color:transparent}
+  body{padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+  .wrap{max-width:520px;margin:0 auto;padding:20px 18px 40px}
+  .top{display:flex;justify-content:space-between;align-items:center;margin:4px 0 18px}
+  h1{font-size:15px;letter-spacing:.2em;color:var(--green2);margin:0;font-weight:600}
+  .gear{background:none;border:1px solid var(--line);border-radius:999px;padding:6px 12px;color:var(--green);font-size:13px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px}
+  .label{font-size:12px;color:var(--sub);margin-bottom:6px}
+  .next{font-size:17px;line-height:1.5;color:var(--green)}
+  .next.empty{color:var(--sub);font-size:14px}
+  .row{display:flex;gap:10px;align-items:center}
+  .grow{flex:1}
+  input[type=time],input[type=text],input[type=number],select,textarea{
+    font:inherit;color:var(--ink);background:#fff;border:1px solid var(--line);
+    border-radius:10px;padding:10px 12px;width:100%}
+  select{width:auto;padding:8px 6px}
+  input[type=time]{font-size:28px;text-align:center;font-variant-numeric:tabular-nums}
+  input[type=number]{width:70px;text-align:center}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 12px;font-size:13px;color:var(--green);cursor:pointer}
+  button{font:inherit;cursor:pointer;border:0}
+  .btn{display:block;width:100%;padding:16px;border-radius:14px;font-size:17px;font-weight:600}
+  .btn.main{background:var(--green);color:#fff}
+  .btn.main:disabled{background:#a9b3a6}
+  .btn.terra{background:var(--terra);color:#fff}
+  .btn.ghost{background:transparent;color:var(--green);border:1px solid var(--line)}
+  .btn.ghost:disabled{opacity:.4}
+  .btn+.btn{margin-top:10px}
+  .small{font-size:12px;color:var(--sub);line-height:1.6}
+  .hidden{display:none!important}
+  .note{background:var(--terra-soft);color:#7a3a20;border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.6;margin-top:10px}
+  .today{display:flex;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--green)}
+  .today b{font-variant-numeric:tabular-nums}
+  .pill{background:#fff;border:1px solid var(--line);border-radius:999px;padding:4px 10px}
+  /* running */
+  .phase{display:inline-block;font-size:13px;padding:5px 12px;border-radius:999px;background:var(--green);color:#fff;letter-spacing:.1em}
+  .phase.rest{background:var(--olive)}
+  .big{font-size:72px;font-weight:300;text-align:center;margin:18px 0 4px;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+  .center{text-align:center}
+  .bar{height:8px;background:var(--line);border-radius:99px;overflow:hidden;margin:14px 0 6px}
+  .bar>i{display:block;height:100%;background:var(--terra);width:0}
+  .restmsg{font-size:18px;line-height:1.6;color:var(--green);text-align:center;margin:8px 0 0}
+  .stats{display:flex;justify-content:space-between;font-size:13px;color:var(--sub)}
+  /* settings */
+  .seg{display:flex;background:#fff;border:1px solid var(--line);border-radius:12px;padding:3px;gap:3px}
+  .seg button{flex:1;padding:9px 6px;border-radius:9px;background:transparent;color:var(--green);font-size:13px}
+  .seg button.on{background:var(--green);color:#fff}
+  table.days{width:100%;border-collapse:collapse;margin-top:12px}
+  table.days th{font-size:11px;color:var(--sub);font-weight:500;text-align:left;padding:0 4px 6px}
+  table.days td{padding:6px 4px;border-top:1px solid var(--line);font-size:14px;white-space:nowrap}
+  table.days td.d{width:2.5em;color:var(--green);font-weight:600}
+  .sun{color:var(--terra)!important}
+  .tm{display:inline-flex;align-items:center;gap:3px;font-size:12px;color:var(--sub)}
+  /* sheet */
+  .sheet{position:fixed;inset:0;background:rgba(43,58,48,.35);display:flex;align-items:flex-end;justify-content:center;z-index:10}
+  .sheet .panel{background:var(--card);width:100%;max-width:820px;height:78vh;border-radius:18px 18px 0 0;
+    padding:14px 18px calc(14px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:10px}
+  .memoArea{flex:1;min-height:0;position:relative}
+  .memoArea textarea{height:100%;resize:none;font-size:26px;line-height:1.5}
+  #inkWrap{height:100%;background:#fff;border:1px solid var(--line);border-radius:12px;position:relative;overflow:hidden;
+    background-image:linear-gradient(var(--line) 1px,transparent 1px);background-size:100% 56px;background-position:0 55px}
+  #ink{position:absolute;inset:0;touch-action:none;width:100%;height:100%}
+  #inkWrap,#ink{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:none}
+  .sheet .panel,#dock .panel{-webkit-user-select:none;user-select:none}
+  .panel input,.panel textarea{-webkit-user-select:text;user-select:text}
+  .inkTools{position:absolute;right:8px;top:8px;display:flex;gap:6px}
+  .inkTools button{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:5px 10px;font-size:12px;color:var(--green)}
+  .memos{list-style:none;padding:0;margin:0;max-height:45vh;overflow:auto}
+  .memos li{padding:9px 0;border-bottom:1px solid var(--line);font-size:14px;display:flex;gap:10px;align-items:flex-start}
+  .memos time{color:var(--sub);font-size:11px;white-space:nowrap;padding-top:2px}
+  .memos img{max-width:100%;max-height:110px;border-radius:6px;border:1px solid var(--line);background:#fff}
+  /* 大きなお知らせ（消音時用） */
+  #alertOv{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:var(--terra);color:#fff;text-align:center;padding:30px;animation:pulse 1.2s ease-in-out infinite}
+  #alertOv.rest{background:var(--olive)}
+  #alertOv .t{font-size:30px;font-weight:600;margin-bottom:10px}
+  #alertOv .s{font-size:18px;line-height:1.6;opacity:.95}
+  #alertOv .tap{margin-top:30px;font-size:13px;opacity:.85}
+  @keyframes pulse{50%{filter:brightness(1.15)}}
+  .memos li{cursor:pointer}
+  #viewer{position:fixed;inset:0;z-index:15;background:var(--bg);display:flex;flex-direction:column;padding:calc(14px + env(safe-area-inset-top)) 16px calc(14px + env(safe-area-inset-bottom))}
+  #viewer .vbody{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:auto}
+  #viewer img{max-width:100%;max-height:100%;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:12px}
+  #viewer .vtext{font-size:26px;line-height:1.6;color:var(--ink);white-space:pre-wrap;word-break:break-all;max-width:720px}
+  #viewer .vbar{display:flex;gap:10px;align-items:center;margin-top:12px}
+  #viewer .vbar button{padding:12px 14px;border-radius:12px;font-size:15px}
+  /* iPadなど広い画面：作業中はメモを下に常時表示 */
+  body.wide .wrap{max-width:1100px}
+  #run.docked{display:flex;flex-direction:column;height:calc(100dvh - 40px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}
+  #run.docked .runTop{display:flex;gap:24px;align-items:center}
+  #run.docked .runTimer{flex:1}
+  #run.docked .runBtns{width:220px}
+  #run.docked .big{font-size:60px;margin:6px 0 0}
+  #run.docked .restmsg{margin:4px 0 0;font-size:16px}
+  #run.docked #memoBtn{display:none}
+  #run:not(.docked) .runBtns{margin-top:24px}
+  #dock{flex:1;min-height:0;margin-top:12px}
+  #dock .panel{height:100%;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+  #dock #memoCancel{display:none}
+  .wakeStat{margin:10px 0 0}
+  #toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--green);color:#fff;
+    padding:10px 18px;border-radius:999px;font-size:14px;z-index:30;opacity:0;transition:opacity .25s;pointer-events:none}
+  #toast.on{opacity:1}
+  details summary{cursor:pointer;font-size:13px;color:var(--sub)}
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+
+  <!-- ホーム -->
+  <section id="home">
+    <div class="top"><h1>My Desk</h1><button class="gear" id="toSettings">設定</button></div>
+    <div class="card">
+      <div class="label">前回の「次にやること」</div>
+      <div id="nextText" class="next empty">まだありません</div>
+    </div>
+
+    <div class="card">
+      <div class="label" id="todayLabel">今日の枠</div>
+      <div class="today" id="todayStat"></div>
+      <div class="note hidden" id="offNote"></div>
+    </div>
+
+    <div class="card" id="endCard">
+      <div class="label">今日は何時まで？（先に決めます）</div>
+      <input type="time" id="endTime">
+      <div class="chips">
+        <button class="chip" data-add="15">15分だけ</button>
+        <button class="chip" data-add="60">60分</button>
+        <button class="chip" data-add="90">90分</button>
+      </div>
+      <div id="endInfo" class="small" style="margin-top:10px"></div>
+      <div id="lateNote" class="note hidden">夜遅めの時間です。今日は短めにして、続きは明日に回すのも手です。</div>
+    </div>
+
+    <button class="btn main" id="startBtn">はじめる</button>
+
+    <div class="card" style="margin-top:14px">
+      <div class="row">
+        <div class="grow"><div class="label" style="margin:0">一行メモ</div></div>
+        <span class="small" id="memoCount"></span>
+      </div>
+      <ul class="memos" id="memoListHome" style="margin-top:6px"></ul>
+    </div>
+  </section>
+
+  <!-- 設定 -->
+  <section id="settings" class="hidden">
+    <div class="top"><h1>設定</h1><button class="gear" id="backHome">戻る</button></div>
+
+    <div class="card">
+      <div class="label">曜日ごとの作業時間と延長</div>
+      <div class="small" style="margin-bottom:8px">休憩は数えません。0時間の曜日は「お休みの日」になり、はじめられません。</div>
+      <div class="label" style="margin-top:10px">延長の決め方</div>
+      <div class="seg" id="extModeSeg">
+        <button data-mode="common">全曜日共通</button>
+        <button data-mode="perDay">曜日ごと</button>
+      </div>
+      <div class="row" id="extCommonRow" style="margin-top:10px">
+        <span class="grow small">延長はどの曜日も 上限＋</span><span id="extCommonSel"></span>
+      </div>
+      <table class="days">
+        <thead><tr><th></th><th>作業の上限</th><th id="extHead">延長</th></tr></thead>
+        <tbody id="dayRows"></tbody>
+      </table>
+      <div class="row" style="margin-top:10px">
+        <button class="chip" id="copyTue">火曜の値を全曜日にコピー</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="label">作業と休憩の長さ</div>
+      <div class="row"><span class="grow small">作業</span><input type="number" id="workMin" min="5" max="120"><span class="small">分</span></div>
+      <div class="row" style="margin-top:8px"><span class="grow small">休憩</span><input type="number" id="restMin" min="1" max="30"><span class="small">分</span></div>
+    </div>
+
+    <div class="card">
+      <div class="label">作業中は画面を暗くする（ショートカット連携）</div>
+      <div class="seg" id="watchSeg">
+        <button data-w="off">オフ</button>
+        <button data-w="on">オン</button>
+      </div>
+      <p class="small" id="dimState" style="margin:8px 0 0"></p>
+      <div id="watchBox" class="hidden" style="margin-top:10px">
+        <div class="row"><span class="grow small">はじめる時に動かす</span><input type="text" id="scName" style="width:150px"></div>
+        <div class="row" style="margin-top:8px"><span class="grow small">終える時に動かす</span><input type="text" id="scEnd" style="width:150px"></div>
+        <p class="small">「はじめる」「延長」を押すと開始用のショートカットを、「ここで終える」「次にやることを書いて終える」「もう一枠」を押すと終了用のショートカットを動かします。開始用には終わりまでの分数を渡すので、明るさを下げるほか、タイマーのセットにも使えます。動いたあとは、画面左上の「◀ My Desk」で戻ってきます。名前を空にすると、そのショートカットは動かしません。</p>
+        <p class="small" id="watchWarn"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 作業中 -->
+  <section id="run" class="hidden">
+    <div class="runTop">
+      <div class="runTimer">
+        <div class="center"><span class="phase" id="phaseTag">作業中</span></div>
+        <div class="big" id="clock">50:00</div>
+        <div class="bar"><i id="barFill"></i></div>
+        <div class="stats"><span id="untilEnd"></span><span id="endAt"></span></div>
+        <p class="small center" id="endReason"></p>
+        <p class="restmsg hidden" id="restMsg"></p>
+      </div>
+      <div class="runBtns">
+        <button class="btn terra" id="memoBtn">浮かんだことをメモ</button>
+        <button class="btn ghost" id="stopBtn">ここで終える</button>
+        <p class="small center wakeStat" id="wakeStat"></p>
+      </div>
+    </div>
+    <div id="dock"></div>
+  </section>
+
+  <!-- 終了時刻 -->
+  <section id="timeup" class="hidden">
+    <div class="top"><h1>My Desk</h1></div>
+    <div class="card center">
+      <div style="font-size:22px;color:var(--green);margin:6px 0" id="tuTitle">決めた時刻になりました</div>
+      <div class="small" id="todayTotal"></div>
+    </div>
+    <button class="btn main" id="toEndBtn">次にやることを書いて終える</button>
+    <button class="btn ghost" id="againBtn">時刻を決めて、もう一枠</button>
+    <div class="card hidden" style="margin-top:14px" id="extendBox">
+      <div class="label">調子が良ければ延長（今日はあと <b id="extLeft"></b> まで）</div>
+      <div class="row">
+        <button class="btn ghost grow" data-ext="30">＋30分</button>
+        <button class="btn ghost grow" data-ext="60" style="margin-top:0">＋60分</button>
+      </div>
+      <p class="small" style="margin-bottom:0">延長は休憩から始まります。</p>
+    </div>
+    <div class="card hidden" style="margin-top:14px" id="noExtend">
+      <div class="small">今日の延長は使い切りました。続きは次回に。</div>
+    </div>
+  </section>
+
+  <!-- 終了メモ -->
+  <section id="finish" class="hidden">
+    <div class="top"><h1>My Desk</h1></div>
+    <div class="card">
+      <div class="label">次回の最初の一歩を一行で</div>
+      <input type="text" id="nextInput" maxlength="80" placeholder="例：3面の解説文、ボス戦の段落から">
+      <p class="small">キリの悪いところで止めて大丈夫です。次に開いたとき、最初に表示します。</p>
+    </div>
+    <button class="btn main" id="saveNextBtn">保存して終える</button>
+  </section>
+</div>
+
+<!-- メモ入力シート -->
+<div class="sheet hidden" id="memoSheet">
+  <div class="panel">
+    <div class="seg" id="memoTabs">
+      <button data-tab="text">文字入力</button>
+      <button data-tab="scribble">手書き→文字</button>
+      <button data-tab="ink">手書きのまま</button>
+    </div>
+    <div class="memoArea">
+      <div data-pane="text" style="height:100%">
+        <input type="text" id="memoInput" maxlength="100" placeholder="浮かんだことを一行で" style="font-size:18px">
+      </div>
+      <div data-pane="scribble" style="height:100%">
+        <textarea id="memoScribble" maxlength="200" placeholder="Apple Pencilでここに書くと文字になります"></textarea>
+      </div>
+      <div data-pane="ink" style="height:100%">
+        <div id="inkWrap"><canvas id="ink"></canvas>
+          <div class="inkTools"><button id="inkUndo">1つ戻す</button><button id="inkClear">全部消す</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <button class="btn ghost grow" id="memoCancel">戻る</button>
+      <button class="btn main grow" id="memoSave" style="margin-top:0">メモして戻る</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<div id="viewer" class="hidden">
+  <div class="row"><span class="small grow" id="vDate"></span><span class="small" id="vPos"></span></div>
+  <div class="vbody" id="vBody"></div>
+  <div class="vbar">
+    <button class="btn ghost" id="vPrev" style="width:auto">← 前</button>
+    <button class="btn ghost" id="vNext" style="width:auto;margin-top:0">次 →</button>
+    <span class="grow"></span>
+    <button class="btn ghost" id="vDel" style="width:auto;margin-top:0;color:var(--terra)">削除</button>
+    <button class="btn main" id="vClose" style="width:auto;margin-top:0">閉じる</button>
+  </div>
+</div>
+<div id="alertOv" class="hidden"><div class="t" id="ovT"></div><div class="s" id="ovS"></div><div class="tap">タップして閉じる</div></div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const DAYS = ["日","月","火","水","木","金","土"];
+  const REST_TIPS = [
+    "立ち上がって、胸を開きましょう",
+    "肩を後ろに大きく5回まわしましょう",
+    "両手を後ろで組んで、胸を張りましょう",
+    "首をゆっくり左右に倒しましょう",
+    "少し歩いて、水を一口飲みましょう"
+  ];
+
+  // ---------- 保存 ----------
+  const store = {
+    get(k, d){ try{ const v = localStorage.getItem("kugiri_"+k); return v==null? d : JSON.parse(v);}catch(e){ return d; } },
+    set(k, v){ try{ localStorage.setItem("kugiri_"+k, JSON.stringify(v)); return true; }catch(e){ return false; } }
+  };
+  const DEFAULT = {
+    work:50, rest:10,
+    base:[0,0,240,240,240,240,120],      // 日〜土（分）
+    extMode:"common", extCommon:120,
+    extDay:[0,0,120,120,120,120,60],
+    watch:false, scName:"MyDesk開始", scEnd:"MyDesk終了", memoTab:"text"
+  };
+  let settings = Object.assign({}, DEFAULT, store.get("settings", {}));
+  // 旧版の初期値から移行
+  if(["くぎり","くぎり開始"].includes(settings.scName)) settings.scName="MyDesk開始";
+  if(settings.scEnd==="くぎり終了") settings.scEnd="MyDesk終了";
+  let S = store.get("state", null);
+  let memos = store.get("memos", []);
+  let next = store.get("next", "");
+  let daily = store.get("daily", {});
+  const saveAll = () => { store.set("state",S); store.set("next",next); store.set("settings",settings); store.set("daily",daily);
+    if(!store.set("memos",memos)) alertBox("保存できませんでした","端末の保存容量がいっぱいです。手書きメモを減らしてください。",false); };
+
+  // ---------- 時間の道具 ----------
+  const dayKey = (t=Date.now()) => { const d=new Date(t); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
+  const hm = t => { const d=new Date(t); return d.getHours()+":"+String(d.getMinutes()).padStart(2,"0"); };
+  const mmss = ms => { ms=Math.max(0,ms); const s=Math.ceil(ms/1000); return Math.floor(s/60)+":"+String(s%60).padStart(2,"0"); };
+  const hmin = m => { m=Math.max(0,Math.round(m)); const h=Math.floor(m/60), r=m%60; return h? (r? `${h}時間${r}分` : `${h}時間`) : `${r}分`; };
+  const baseCap = (t=Date.now()) => settings.base[new Date(t).getDay()];
+  const extCap  = (t=Date.now()) => settings.extMode==="common" ? settings.extCommon : settings.extDay[new Date(t).getDay()];
+  const doneMin = () => (daily[dayKey()]||0) + (S && !S.closed && S.day===dayKey() ? sessWork(S, Date.now()) : 0);
+
+  // セッションの予定（作業→休憩→…）をたどる
+  function walk(s, fn){
+    let t=s.start, ph=s.first, i=0;
+    while(t < s.end && i < 500){
+      const len = ph==="work"? s.w : s.r;
+      const pe = Math.min(t+len, s.end);
+      if(fn(ph, t, pe, i)===false) return;
+      t = pe; ph = ph==="work"? "rest":"work"; i++;
+    }
+  }
+  function sessWork(s, until){ // 分
+    let w=0; walk(s,(ph,a,b)=>{ if(a>=until) return false; if(ph==="work") w += Math.min(b,until)-a; }); return w/60000;
+  }
+  function phaseAt(s, t){
+    let r=null; walk(s,(ph,a,b,i)=>{ if(t>=a && t<b){ r={ph,a,b,i}; return false; } }); return r;
+  }
+  function timeForWork(start, first, w, r, needMin){ // needMin分の作業が終わる時刻
+    let t=start, ph=first, need=needMin*60000, i=0;
+    while(i++ < 500){
+      if(ph==="work"){ if(need<=w) return t+need; need-=w; t+=w; } else t+=r;
+      ph = ph==="work"? "rest":"work";
+    }
+    return t;
+  }
+
+  // ---------- お知らせ ----------
+  let ac=null;
+  function unlockAudio(){ try{ ac = ac || new (window.AudioContext||window.webkitAudioContext)(); if(ac.state==="suspended") ac.resume(); }catch(e){} }
+  function chime(n){ try{ if(!ac) return; const now=ac.currentTime;
+    for(let i=0;i<n;i++){ const o=ac.createOscillator(), g=ac.createGain(); o.frequency.value=i%2?660:880;
+      g.gain.setValueAtTime(.0001,now+i*.5); g.gain.exponentialRampToValueAtTime(.35,now+i*.5+.02); g.gain.exponentialRampToValueAtTime(.0001,now+i*.5+.45);
+      o.connect(g).connect(ac.destination); o.start(now+i*.5); o.stop(now+i*.5+.5);} }catch(e){} }
+  function alertBox(t, s, rest){ $("ovT").textContent=t; $("ovS").textContent=s||""; $("alertOv").classList.toggle("rest",!!rest); $("alertOv").classList.remove("hidden"); }
+  $("alertOv").addEventListener("click",()=>$("alertOv").classList.add("hidden"));
+  function notify(t, s, n, rest){
+    chime(n);
+    try{ navigator.vibrate && navigator.vibrate([300,150,300,150,300]); }catch(e){}
+    try{ if("Notification" in window && Notification.permission==="granted") new Notification(t,{body:s}); }catch(e){}
+    alertBox(t, s, rest);
+  }
+  let wakeLock=null;
+  let wantAwake=false;
+  function wakeText(){
+    const el=$("wakeStat"); if(!el) return;
+    if(!wantAwake){ el.textContent=""; return; }
+    el.textContent = wakeLock ? "画面：作業中はつけたまま"
+      : !("wakeLock" in navigator) || inFrame ? "画面：つけたままにできません（ホーム画面の「My Desk」から開くと使えます）"
+      : "画面：つけたままにできていません（画面をタップすると再試行）";
+  }
+  async function keepAwake(on){
+    wantAwake=on;
+    try{
+      if(on && "wakeLock" in navigator && !wakeLock){
+        wakeLock=await navigator.wakeLock.request("screen");
+        wakeLock.addEventListener("release",()=>{ wakeLock=null; wakeText(); });
+      }
+      if(!on && wakeLock){ const w=wakeLock; wakeLock=null; await w.release(); }
+    }catch(e){ wakeLock=null; }
+    wakeText();
+  }
+  // 解除されていたら、次に触れたときに取り直す
+  document.addEventListener("pointerdown", ()=>{ if(wantAwake && !wakeLock) keepAwake(true); }, true);
+
+  // ショートカット連携（Apple Watch / iPhoneのバイブ）
+  const inFrame = (()=>{ try{ return window.top!==window.self; }catch(e){ return true; } })();
+  // x-success で戻すとSafariが開いてしまう（ホーム画面のアプリと保存場所が別）ため、戻りは左上の「◀ My Desk」に任せる
+  function runShortcut(name, text){
+    if(!settings.watch || !name || inFrame) return;
+    let url = "shortcuts://run-shortcut?name="+encodeURIComponent(name);
+    if(text!=null && text!=="") url += "&input=text&text="+encodeURIComponent(text);
+    try{ location.href = url; }catch(e){}
+  }
+  function sendToWatch(){
+    if(!S) return;
+    runShortcut(settings.scName, String(Math.max(1, Math.round((S.end-Date.now())/60000))));
+  }
+  const shortcutEnd = () => runShortcut(settings.scEnd, "");
+
+  // ---------- 画面切り替え ----------
+  const SECTIONS=["home","settings","run","timeup","finish"];
+  function show(id){ SECTIONS.forEach(s=>$(s).classList.toggle("hidden", s!==id)); window.scrollTo(0,0); placeMemo(); }
+  const visible = id => !$(id).classList.contains("hidden");
+  const esc = s => String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+  // ---------- ホーム ----------
+  function capNow(){ // 今はじめる場合の作業上限（今日の合計分）と残り
+    const B=baseCap(), E=extCap(), done=doneMin();
+    if(done < B-0.5) return {cap:B, left:B-done, ext:false};
+    if(B>0 && done < B+E-0.5) return {cap:B+E, left:B+E-done, ext:true};
+    return {cap:B, left:0, ext:false};
+  }
+  function defaultEnd(addMin){
+    const d=new Date(Date.now()+addMin*60000); d.setMinutes(Math.ceil(d.getMinutes()/5)*5,0,0);
+    return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+  }
+  function endTs(){
+    const v=$("endTime").value; if(!v) return null;
+    const [h,m]=v.split(":").map(Number); const d=new Date(); d.setHours(h,m,0,0);
+    if(d.getTime()<=Date.now()) d.setDate(d.getDate()+1);
+    return d.getTime();
+  }
+  function plan(){ // 実際に止まる時刻
+    const t=endTs(), c=capNow(); if(!t || c.left<=0) return null;
+    const now=Date.now(), w=settings.work*60000, r=settings.rest*60000;
+    const capTs = timeForWork(now, "work", w, r, c.left);
+    return { end: Math.min(t,capTs), byCap: capTs < t, user:t, c };
+  }
+  function renderToday(){
+    const d=new Date(), B=baseCap(), E=extCap(), done=doneMin();
+    $("todayLabel").textContent = `今日（${DAYS[d.getDay()]}曜）の枠`;
+    $("todayStat").innerHTML = `<span class="pill">上限 <b>${hmin(B)}</b></span><span class="pill">済み <b>${hmin(done)}</b></span>`
+      + (B>0 ? `<span class="pill">延長 ＋<b>${hmin(E)}</b>まで</span>` : "");
+    const c=capNow(), off=$("offNote");
+    if(B===0){ off.textContent="今日はお休みの日です。（設定で変えられます）"; off.classList.remove("hidden"); }
+    else if(c.left<=0){ off.textContent="今日の枠と延長を使い切りました。続きは次回に。"; off.classList.remove("hidden"); }
+    else if(c.ext){ off.textContent=`今日の上限に達しています。始めると延長枠（あと${hmin(c.left)}）を使います。`; off.classList.remove("hidden"); }
+    else off.classList.add("hidden");
+    $("endCard").classList.toggle("hidden", c.left<=0);
+  }
+  function updateEndInfo(){
+    renderToday();
+    const p=plan();
+    $("startBtn").disabled = !p || p.end-Date.now() < 60000;
+    $("startBtn").textContent = p && p.c.ext ? "延長枠ではじめる" : "はじめる";
+    if(!endTs()) $("endInfo").textContent="終わりの時刻を入れてください";
+    else if(p) $("endInfo").textContent = p.byCap
+      ? `今日の残り枠（${hmin(p.c.left)}）で ${hm(p.end)} ごろに止まります`
+      : `${hm(p.end)} まで、あと${hmin((p.end-Date.now())/60000)}の枠です`;
+    else $("endInfo").textContent="";
+    const h=new Date().getHours(); $("lateNote").classList.toggle("hidden", !(h>=22||h<4));
+  }
+  function memoHTML(m, idx){
+    const d=new Date(m.t);
+    return `<li data-i="${idx}"><time>${d.getMonth()+1}/${d.getDate()}</time><div>${m.img? `<img src="${m.img}" alt="手書きメモ">` : esc(m.text)}</div></li>`;
+  }
+  function renderMemos(){
+    const list=memos.slice().reverse();
+    $("memoCount").textContent = list.length? list.length+"件" : "";
+    $("memoListHome").innerHTML = list.length ? list.slice(0,30).map(m=>memoHTML(m, memos.indexOf(m))).join("")
+      : `<li class="small" style="border:0">作業中に浮かんだことは、ここにたまります</li>`;
+  }
+  function renderHome(){
+    $("nextText").textContent = next || "まだありません";
+    $("nextText").classList.toggle("empty", !next);
+    if(!$("endTime").value) $("endTime").value = defaultEnd(60);
+    updateEndInfo(); renderMemos(); show("home");
+  }
+  $("endTime").addEventListener("input", updateEndInfo);
+  document.querySelectorAll("[data-add]").forEach(b=>b.addEventListener("click",()=>{ $("endTime").value=defaultEnd(+b.dataset.add); updateEndInfo(); }));
+  setInterval(()=>{ if(visible("home")) updateEndInfo(); }, 30000);
+
+  function startSession(first, endTsVal, reason){
+    const now=Date.now();
+    S = { start:now, first, w:settings.work*60000, r:settings.rest*60000, end:endTsVal, day:dayKey(now),
+          reason, lastIdx:0, tip: REST_TIPS[Math.floor(Math.random()*REST_TIPS.length)], closed:false };
+    saveAll(); keepAwake(true); show("run"); tick();
+    sendToWatch();
+  }
+  $("startBtn").addEventListener("click", ()=>{
+    unlockAudio();
+    try{ if("Notification" in window && Notification.permission==="default") Notification.requestPermission(); }catch(e){}
+    const p=plan(); if(!p) return;
+    startSession("work", p.end, p.byCap ? (p.c.ext? "ext":"cap") : "user");
+  });
+
+  // ---------- 作業中 ----------
+  function closeSession(at){
+    if(!S || S.closed) return;
+    daily[S.day] = (daily[S.day]||0) + sessWork(S, Math.min(at, S.end));
+    S.closed = true; saveAll();
+  }
+  function tick(){
+    if(!S || S.closed) return;
+    const now=Date.now();
+    if(now >= S.end){
+      closeSession(S.end);
+      const t = S.reason==="user" ? "決めた時刻になりました" : S.reason==="cap" ? "今日の作業枠を使い切りました" : "延長の時間が終わりました";
+      notify(t, "ここで区切りましょう", 4, false);
+      keepAwake(false); renderTimeup(); return;
+    }
+    const p=phaseAt(S, now); if(!p) return;
+    if(p.i !== S.lastIdx){
+      S.lastIdx=p.i;
+      if(p.ph==="rest"){ S.tip=REST_TIPS[Math.floor(Math.random()*REST_TIPS.length)]; notify("休憩の時間です", S.tip, 2, true); }
+      else notify("作業に戻りましょう", "終わりは "+hm(S.end), 1, false);
+      saveAll();
+    }
+    const rest = p.ph==="rest";
+    $("phaseTag").textContent = rest? "休憩中":"作業中";
+    $("phaseTag").classList.toggle("rest", rest);
+    $("clock").textContent = mmss(p.b-now);
+    $("barFill").style.width = Math.min(100,(now-S.start)/(S.end-S.start)*100)+"%";
+    $("barFill").style.background = rest? "var(--olive)":"var(--terra)";
+    $("untilEnd").textContent = "終わりまで "+mmss(S.end-now);
+    $("endAt").textContent = hm(S.end)+" まで";
+    $("endReason").textContent = S.reason==="cap" ? "今日の上限で止まります" : S.reason==="ext" ? "延長中です" : "";
+    $("restMsg").classList.toggle("hidden", !rest);
+    $("restMsg").textContent = S.tip||"";
+    document.title = (rest?"休憩 ":"作業 ")+mmss(p.b-now)+" | My Desk";
+    if(!visible("run")) show("run");
+  }
+  setInterval(()=>{ if(visible("run")) tick(); }, 1000);
+  document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible" && visible("run")){ keepAwake(true); tick(); } });
+  $("stopBtn").addEventListener("click", ()=>{ closeSession(Date.now()); S.stopped=true; saveAll(); keepAwake(false); openFinish(); shortcutEnd(); });
+
+  // ---------- 時間切れ ----------
+  function renderTimeup(){
+    const B=baseCap(), E=extCap(), done=doneMin();
+    const baseLeft = B-done, extLeft = B>0 ? Math.min(E, B+E-done) : 0;
+    $("tuTitle").textContent = S && S.reason==="cap" ? "今日の作業枠を使い切りました" : S && S.reason==="ext" ? "延長の時間が終わりました" : "決めた時刻になりました";
+    $("todayTotal").textContent = "今日の作業 "+hmin(done);
+    $("againBtn").classList.toggle("hidden", baseLeft < 5);
+    const canExt = baseLeft < 5 && extLeft >= 5;
+    $("extendBox").classList.toggle("hidden", !canExt);
+    $("noExtend").classList.toggle("hidden", !(baseLeft<5 && B>0 && extLeft<5));
+    $("extLeft").textContent = hmin(extLeft);
+    document.querySelectorAll("[data-ext]").forEach(b=>{ b.disabled = false; b.textContent = "＋"+hmin(Math.min(+b.dataset.ext, extLeft)); b.dataset.real = Math.min(+b.dataset.ext, extLeft); });
+    if(extLeft < 60) document.querySelector('[data-ext="60"]').classList.add("hidden"); else document.querySelector('[data-ext="60"]').classList.remove("hidden");
+    document.title="時間です | My Desk";
+    show("timeup");
+  }
+  document.querySelectorAll("[data-ext]").forEach(b=>b.addEventListener("click", ()=>{
+    unlockAudio();
+    const add = +b.dataset.real; if(!(add>0)) return;
+    const now=Date.now(), w=settings.work*60000, r=settings.rest*60000;
+    startSession("rest", timeForWork(now, "rest", w, r, add), "ext"); // 延長は休憩から
+  }));
+  $("toEndBtn").addEventListener("click", ()=>{ if(S){ S.stopped=true; saveAll(); } openFinish(); shortcutEnd(); });
+  $("againBtn").addEventListener("click", ()=>{ S=null; saveAll(); $("endTime").value=""; renderHome(); shortcutEnd(); });
+
+  // ---------- 終了メモ ----------
+  function openFinish(){ $("nextInput").value=""; show("finish"); setTimeout(()=>$("nextInput").focus(),50); }
+  $("saveNextBtn").addEventListener("click", ()=>{
+    const v=$("nextInput").value.trim(); if(v) next=v;
+    S=null; saveAll(); document.title="My Desk"; $("endTime").value=""; renderHome();
+  });
+  $("nextInput").addEventListener("keydown", e=>{ if(e.key==="Enter" && !e.isComposing) $("saveNextBtn").click(); });
+
+  // ---------- 設定 ----------
+  function hourSel(val, onchange){
+    const wrap=document.createElement("span"); wrap.className="tm";
+    const h=document.createElement("select"), m=document.createElement("select");
+    for(let i=0;i<=12;i++) h.add(new Option(i, i));
+    [0,15,30,45].forEach(i=>m.add(new Option(String(i).padStart(2,"0"), i)));
+    h.value=Math.floor(val/60); m.value=[0,15,30,45].includes(val%60)? val%60 : 0;
+    const fire=()=>onchange(+h.value*60 + +m.value);
+    h.onchange=fire; m.onchange=fire;
+    wrap.append(h,"時間",m,"分"); return wrap;
+  }
+  function renderSettings(){
+    document.querySelectorAll("#extModeSeg button").forEach(b=>b.classList.toggle("on", b.dataset.mode===settings.extMode));
+    const per = settings.extMode==="perDay";
+    $("extCommonRow").classList.toggle("hidden", per);
+    $("extHead").classList.toggle("hidden", !per);
+    $("extCommonSel").replaceChildren(hourSel(settings.extCommon, v=>{settings.extCommon=v; saveAll();}));
+    const tb=$("dayRows"); tb.replaceChildren();
+    [2,3,4,5,6,0,1].forEach(d=>{ // 火曜はじまり（休日の日・月を最後に）
+      const tr=document.createElement("tr");
+      const td0=document.createElement("td"); td0.className="d"+(d===0?" sun":""); td0.textContent=DAYS[d];
+      const td1=document.createElement("td"); td1.append(hourSel(settings.base[d], v=>{settings.base[d]=v; saveAll();}));
+      const td2=document.createElement("td"); td2.className=per?"":"hidden";
+      td2.append("＋", hourSel(settings.extDay[d], v=>{settings.extDay[d]=v; saveAll();}));
+      tr.append(td0,td1,td2); tb.append(tr);
+    });
+    $("workMin").value=settings.work; $("restMin").value=settings.rest;
+    document.querySelectorAll("#watchSeg button").forEach(b=>b.classList.toggle("on", (b.dataset.w==="on")===settings.watch));
+    $("dimState").textContent = settings.watch ? "はじめる時に暗くし、終える時に元に戻します。" : "明るさは変えません。";
+    $("watchBox").classList.toggle("hidden", !settings.watch);
+    $("scName").value=settings.scName; $("scEnd").value=settings.scEnd;
+    $("watchWarn").textContent = inFrame ? "※ いま開いているClaudeのページからは連携できません。ホーム画面に追加した「My Desk」から使えます。" : "";
+  }
+  $("toSettings").addEventListener("click", ()=>{ renderSettings(); show("settings"); });
+  $("backHome").addEventListener("click", renderHome);
+  document.querySelectorAll("#extModeSeg button").forEach(b=>b.addEventListener("click",()=>{ settings.extMode=b.dataset.mode; saveAll(); renderSettings(); }));
+  document.querySelectorAll("#watchSeg button").forEach(b=>b.addEventListener("click",()=>{ settings.watch=b.dataset.w==="on"; saveAll(); renderSettings(); }));
+  $("copyTue").addEventListener("click",()=>{ for(let d=0;d<7;d++){ settings.base[d]=settings.base[2]; settings.extDay[d]=settings.extDay[2]; } saveAll(); renderSettings(); });
+  $("workMin").addEventListener("change",e=>{ settings.work=Math.min(120,Math.max(5,+e.target.value||50)); e.target.value=settings.work; saveAll(); });
+  $("restMin").addEventListener("change",e=>{ settings.rest=Math.min(30,Math.max(1,+e.target.value||10)); e.target.value=settings.rest; saveAll(); });
+  $("scName").addEventListener("change",e=>{ settings.scName=e.target.value.trim(); saveAll(); });
+  $("scEnd").addEventListener("change",e=>{ settings.scEnd=e.target.value.trim(); saveAll(); });
+
+  // ---------- メモ（文字／手書き→文字／手書きのまま） ----------
+  const cv=$("ink"), ctx=cv.getContext("2d");
+  let strokes=[], penSeen=false;
+  function setTab(tab, noFocus){
+    settings.memoTab=tab; saveAll();
+    document.querySelectorAll("#memoTabs button").forEach(b=>b.classList.toggle("on", b.dataset.tab===tab));
+    document.querySelectorAll("[data-pane]").forEach(p=>p.classList.toggle("hidden", p.dataset.pane!==tab));
+    if(tab==="ink") requestAnimationFrame(sizeInk);
+    else if(!noFocus && !docked) setTimeout(()=>{ (tab==="text"? $("memoInput") : $("memoScribble")).focus(); },50);
+  }
+  function sizeInk(){
+    const r=cv.getBoundingClientRect(), dpr=window.devicePixelRatio||1;
+    if(!r.width) return;
+    cv.width=Math.round(r.width*dpr); cv.height=Math.round(r.height*dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0); redraw();
+  }
+  function drawStroke(s){
+    ctx.strokeStyle="#2b3a30"; ctx.lineCap="round"; ctx.lineJoin="round";
+    for(let i=1;i<s.length;i++){
+      ctx.lineWidth=s[i].w; ctx.beginPath(); ctx.moveTo(s[i-1].x,s[i-1].y); ctx.lineTo(s[i].x,s[i].y); ctx.stroke();
+    }
+    if(s.length===1){ ctx.fillStyle="#2b3a30"; ctx.beginPath(); ctx.arc(s[0].x,s[0].y,s[0].w/2,0,7); ctx.fill(); }
+  }
+  function redraw(){ const r=cv.getBoundingClientRect(); ctx.clearRect(0,0,r.width,r.height); strokes.forEach(drawStroke); }
+  function pt(e){ const r=cv.getBoundingClientRect(); const pr = e.pointerType==="pen" ? (e.pressure||.5) : .5;
+    return {x:e.clientX-r.left, y:e.clientY-r.top, w: e.pointerType==="pen" ? 1.2+pr*3.6 : 2.8}; }
+  // 速く書いても取りこぼさないよう、ペンごとに線を管理し、描画は画面更新ごとにまとめる
+  const active=new Map(); let pending=[];
+  function flush(){ pending.forEach(seg=>drawStroke(seg)); pending=[]; rafId=0; }
+  let rafId=0; const queue=seg=>{ pending.push(seg); if(!rafId) rafId=requestAnimationFrame(flush); };
+  cv.addEventListener("pointerdown", e=>{
+    if(e.pointerType==="pen") penSeen=true;
+    if(e.pointerType==="touch" && penSeen) return; // ペン使用中は手のひらを無視
+    e.preventDefault();
+    try{ cv.setPointerCapture(e.pointerId); }catch(_){}
+    const st=[pt(e)]; strokes.push(st); active.set(e.pointerId, st); queue(st.slice());
+  });
+  cv.addEventListener("pointermove", e=>{
+    const st=active.get(e.pointerId); if(!st) return;
+    e.preventDefault();
+    const evs = (e.getCoalescedEvents && e.getCoalescedEvents().length) ? e.getCoalescedEvents() : [e];
+    const from = st.length-1;
+    evs.forEach(ev=>st.push(pt(ev)));
+    queue(st.slice(from));
+  });
+  const endStroke=e=>{ active.delete(e.pointerId); };
+  cv.addEventListener("pointerup", endStroke);
+  cv.addEventListener("pointercancel", endStroke); // 途中で切られても、書いた線は残す
+  // iPadのSafariが素早いペン操作を「ダブルタップ」「選択」と受け取って入力を捨てるのを防ぐ
+  ["touchstart","touchmove","touchend","gesturestart"].forEach(t=>cv.addEventListener(t, e=>e.preventDefault(), {passive:false}));
+  $("inkWrap").addEventListener("dblclick", e=>e.preventDefault());
+  $("inkUndo").addEventListener("click", ()=>{ strokes.pop(); active.clear(); redraw(); });
+  $("inkClear").addEventListener("click", ()=>{ strokes=[]; active.clear(); redraw(); });
+  window.addEventListener("resize", ()=>{ if(!$("memoSheet").classList.contains("hidden") && settings.memoTab==="ink") sizeInk(); });
+
+  function inkToImage(){
+    if(!strokes.length) return null;
+    let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+    strokes.flat().forEach(p=>{ x0=Math.min(x0,p.x); y0=Math.min(y0,p.y); x1=Math.max(x1,p.x); y1=Math.max(y1,p.y); });
+    const pad=12; x0-=pad; y0-=pad; x1+=pad; y1+=pad;
+    const w=x1-x0, h=y1-y0, sc=Math.min(1, 700/w, 400/h) * 1.5;
+    const oc=document.createElement("canvas"); oc.width=Math.ceil(w*sc); oc.height=Math.ceil(h*sc);
+    const o=oc.getContext("2d"); o.fillStyle="#fff"; o.fillRect(0,0,oc.width,oc.height);
+    o.setTransform(sc,0,0,sc,-x0*sc,-y0*sc); o.strokeStyle="#2b3a30"; o.lineCap="round"; o.lineJoin="round";
+    strokes.forEach(s=>{ for(let i=1;i<s.length;i++){ o.lineWidth=s[i].w; o.beginPath(); o.moveTo(s[i-1].x,s[i-1].y); o.lineTo(s[i].x,s[i].y); o.stroke(); } });
+    return oc.toDataURL("image/png");
+  }
+  const panel=document.querySelector("#memoSheet .panel"), sheet=$("memoSheet");
+  const wideMQ = window.matchMedia("(min-width: 600px)");
+  let docked=false;
+  function clearMemo(){ $("memoInput").value=""; $("memoScribble").value=""; strokes=[]; active.clear(); if(settings.memoTab==="ink") redraw(); }
+  function placeMemo(){
+    const want = wideMQ.matches && visible("run");
+    document.body.classList.toggle("wide", wideMQ.matches);
+    if(want===docked) { if(want && settings.memoTab==="ink") requestAnimationFrame(sizeInk); return; }
+    docked=want;
+    $("run").classList.toggle("docked", want);
+    if(want){ $("dock").append(panel); sheet.classList.add("hidden"); $("memoSave").textContent="メモする"; clearMemo(); setTab(settings.memoTab||"text", true); }
+    else { sheet.append(panel); $("memoSave").textContent="メモして戻る"; }
+  }
+  wideMQ.addEventListener ? wideMQ.addEventListener("change", placeMemo) : wideMQ.addListener(placeMemo);
+  let toastT=0;
+  function toast(msg){ const t=$("toast"); t.textContent=msg; t.classList.add("on"); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove("on"),1400); }
+  function openMemo(){
+    $("memoInput").value=""; $("memoScribble").value=""; strokes=[]; active.clear();
+    $("memoSheet").classList.remove("hidden"); setTab(settings.memoTab||"text");
+  }
+  function saveMemo(){
+    const tab=settings.memoTab, t=Date.now();
+    if(tab==="ink"){ const img=inkToImage(); if(img) memos.push({t, img}); }
+    else { const v=(tab==="text"? $("memoInput").value : $("memoScribble").value).trim().replace(/\s*\n\s*/g," "); if(v) memos.push({t, text:v}); }
+    saveAll();
+    if(docked){ clearMemo(); toast("メモしました"); }
+    else $("memoSheet").classList.add("hidden");
+  }
+  document.querySelectorAll("#memoTabs button").forEach(b=>b.addEventListener("click",()=>setTab(b.dataset.tab, docked)));
+  $("memoBtn").addEventListener("click", openMemo);
+  $("memoCancel").addEventListener("click", ()=>$("memoSheet").classList.add("hidden"));
+  $("memoSave").addEventListener("click", saveMemo);
+  $("memoInput").addEventListener("keydown", e=>{ if(e.key==="Enter" && !e.isComposing) saveMemo(); });
+
+  // ---------- メモを大きく見る ----------
+  let vIdx=-1, delArmed=false;
+  function openViewer(i){ vIdx=i; delArmed=false; renderViewer(); $("viewer").classList.remove("hidden"); }
+  function renderViewer(){
+    const m=memos[vIdx]; if(!m){ $("viewer").classList.add("hidden"); return; }
+    const d=new Date(m.t);
+    $("vDate").textContent=`${d.getMonth()+1}/${d.getDate()} ${hm(m.t)}`;
+    $("vPos").textContent=`${memos.length-vIdx} / ${memos.length}`; // 新しい順
+    $("vBody").innerHTML = m.img ? `<img src="${m.img}" alt="手書きメモ">` : `<div class="vtext">${esc(m.text)}</div>`;
+    $("vPrev").disabled = vIdx>=memos.length-1; // 新しい方へ
+    $("vNext").disabled = vIdx<=0;              // 古い方へ
+    $("vDel").textContent = delArmed ? "本当に削除" : "削除";
+  }
+  $("memoListHome").addEventListener("click", e=>{ const li=e.target.closest("li[data-i]"); if(li) openViewer(+li.dataset.i); });
+  $("vPrev").addEventListener("click", ()=>{ if(vIdx<memos.length-1){ vIdx++; delArmed=false; renderViewer(); } });
+  $("vNext").addEventListener("click", ()=>{ if(vIdx>0){ vIdx--; delArmed=false; renderViewer(); } });
+  $("vClose").addEventListener("click", ()=>{ $("viewer").classList.add("hidden"); renderMemos(); });
+  $("vDel").addEventListener("click", ()=>{
+    if(!delArmed){ delArmed=true; renderViewer(); return; }
+    memos.splice(vIdx,1); saveAll(); delArmed=false;
+    if(!memos.length){ $("viewer").classList.add("hidden"); renderMemos(); return; }
+    if(vIdx>=memos.length) vIdx=memos.length-1; renderViewer(); renderMemos();
+  });
+
+  // ---------- 起動 ----------
+  try{ if("serviceWorker" in navigator && !inFrame) navigator.serviceWorker.register("sw.js").catch(()=>{}); }catch(e){}
+  if(S && !S.closed){ if(Date.now()>=S.end){ tick(); } else { show("run"); tick(); } }
+  else if(S && S.closed){ if(S.stopped) openFinish(); else renderTimeup(); }
+  else renderHome();
+})();
+</script>
+</body>
+</html>
