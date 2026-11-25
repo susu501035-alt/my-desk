@@ -88,6 +88,7 @@
   .inkTools button{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:5px 10px;font-size:12px;color:var(--green)}
   .memos{list-style:none;padding:0;margin:0;max-height:45vh;overflow:auto}
   .memos li{padding:9px 0;border-bottom:1px solid var(--line);font-size:14px;display:flex;gap:10px;align-items:flex-start}
+  .memos li>div{white-space:pre-wrap;word-break:break-all}
   .memos time{color:var(--sub);font-size:11px;white-space:nowrap;padding-top:2px}
   .memos img{max-width:100%;max-height:110px;border-radius:6px;border:1px solid var(--line);background:#fff}
   /* 大きなお知らせ（消音時用） */
@@ -122,6 +123,11 @@
   #toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--green);color:#fff;
     padding:10px 18px;border-radius:999px;font-size:14px;z-index:30;opacity:0;transition:opacity .25s;pointer-events:none}
   #toast.on{opacity:1}
+  #picker{position:fixed;inset:0;z-index:16;background:rgba(43,58,48,.35);display:flex;align-items:center;justify-content:center;padding:20px}
+  #picker .panel{background:var(--card);width:100%;max-width:640px;max-height:80vh;border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+  #picker .memos{max-height:none;flex:1;overflow:auto}
+  .editRow .chip{padding:6px 10px;font-size:12px}
+  .editing{color:var(--terra)!important;font-weight:600}
   details summary{cursor:pointer;font-size:13px;color:var(--sub)}
 </style>
 </head>
@@ -158,7 +164,7 @@
 
     <div class="card" style="margin-top:14px">
       <div class="row">
-        <div class="grow"><div class="label" style="margin:0">一行メモ</div></div>
+        <div class="grow"><div class="label" style="margin:0">メモ（タップで拡大）</div></div>
         <span class="small" id="memoCount"></span>
       </div>
       <ul class="memos" id="memoListHome" style="margin-top:6px"></ul>
@@ -258,7 +264,7 @@
     <div class="top"><h1>My Desk</h1></div>
     <div class="card">
       <div class="label">次回の最初の一歩を一行で</div>
-      <input type="text" id="nextInput" maxlength="80" placeholder="例：3面の解説文、ボス戦の段落から">
+      <input type="text" id="nextInput" maxlength="80">
       <p class="small">キリの悪いところで止めて大丈夫です。次に開いたとき、最初に表示します。</p>
     </div>
     <button class="btn main" id="saveNextBtn">保存して終える</button>
@@ -273,12 +279,17 @@
       <button data-tab="scribble">手書き→文字</button>
       <button data-tab="ink">手書きのまま</button>
     </div>
+    <div class="row editRow">
+      <span class="small grow" id="editState">新しいメモ</span>
+      <button class="chip" id="pickBtn">これまでのメモ</button>
+      <button class="chip hidden" id="newBtn">新しく書く</button>
+    </div>
     <div class="memoArea">
       <div data-pane="text" style="height:100%">
         <input type="text" id="memoInput" maxlength="100" placeholder="浮かんだことを一行で" style="font-size:18px">
       </div>
       <div data-pane="scribble" style="height:100%">
-        <textarea id="memoScribble" maxlength="200" placeholder="Apple Pencilでここに書くと文字になります"></textarea>
+        <textarea id="memoScribble" maxlength="1000" placeholder="Apple Pencilでここに書くと文字になります"></textarea>
       </div>
       <div data-pane="ink" style="height:100%">
         <div id="inkWrap"><canvas id="ink"></canvas>
@@ -294,6 +305,12 @@
 </div>
 
 <div id="toast"></div>
+<div id="picker" class="hidden">
+  <div class="panel">
+    <div class="row"><span class="label grow" style="margin:0">開くメモを選んでください</span><button class="chip" id="pickClose">閉じる</button></div>
+    <ul class="memos" id="pickList"></ul>
+  </div>
+</div>
 <div id="viewer" class="hidden">
   <div class="row"><span class="small grow" id="vDate"></span><span class="small" id="vPos"></span></div>
   <div class="vbody" id="vBody"></div>
@@ -384,10 +401,19 @@
       g.gain.setValueAtTime(.0001,now+i*.5); g.gain.exponentialRampToValueAtTime(.35,now+i*.5+.02); g.gain.exponentialRampToValueAtTime(.0001,now+i*.5+.45);
       o.connect(g).connect(ac.destination); o.start(now+i*.5); o.stop(now+i*.5+.5);} }catch(e){} }
   function alertBox(t, s, rest){ $("ovT").textContent=t; $("ovS").textContent=s||""; $("alertOv").classList.toggle("rest",!!rest); $("alertOv").classList.remove("hidden"); }
-  $("alertOv").addEventListener("click",()=>$("alertOv").classList.add("hidden"));
-  function notify(t, s, n, rest){
-    chime(n);
-    try{ navigator.vibrate && navigator.vibrate([300,150,300,150,300]); }catch(e){}
+  let ringT=0;
+  function stopRing(){ clearTimeout(ringT); ringT=0; }
+  $("alertOv").addEventListener("click",()=>{ $("alertOv").classList.add("hidden"); stopRing(); });
+  // times回くり返し鳴らす（画面をタップすると止まる）
+  function notify(t, s, n, rest, times=1){
+    stopRing();
+    let c=0;
+    const ring=()=>{
+      chime(n);
+      try{ navigator.vibrate && navigator.vibrate([300,150,300,150,300]); }catch(e){}
+      if(++c < times) ringT=setTimeout(ring, 4000);
+    };
+    ring();
     try{ if("Notification" in window && Notification.permission==="granted") new Notification(t,{body:s}); }catch(e){}
     alertBox(t, s, rest);
   }
@@ -528,7 +554,7 @@
     if(now >= S.end){
       closeSession(S.end);
       const t = S.reason==="user" ? "決めた時刻になりました" : S.reason==="cap" ? "今日の作業枠を使い切りました" : "延長の時間が終わりました";
-      notify(t, "ここで区切りましょう", 4, false);
+      notify(t, "ここで区切りましょう（タップで止まります）", 4, false, 5);
       keepAwake(false); renderTimeup(); return;
     }
     const p=phaseAt(S, now); if(!p) return;
@@ -655,7 +681,9 @@
     }
     if(s.length===1){ ctx.fillStyle="#2b3a30"; ctx.beginPath(); ctx.arc(s[0].x,s[0].y,s[0].w/2,0,7); ctx.fill(); }
   }
-  function redraw(){ const r=cv.getBoundingClientRect(); ctx.clearRect(0,0,r.width,r.height); strokes.forEach(drawStroke); }
+  let bg=null; // 以前の手書きメモを開いたときの下絵 {img,x,y,w,h}
+  function redraw(){ const r=cv.getBoundingClientRect(); ctx.clearRect(0,0,r.width,r.height);
+    if(bg) ctx.drawImage(bg.img, bg.x, bg.y, bg.w, bg.h); strokes.forEach(drawStroke); }
   function pt(e){ const r=cv.getBoundingClientRect(); const pr = e.pointerType==="pen" ? (e.pressure||.5) : .5;
     return {x:e.clientX-r.left, y:e.clientY-r.top, w: e.pointerType==="pen" ? 1.2+pr*3.6 : 2.8}; }
   // 速く書いても取りこぼさないよう、ペンごとに線を管理し、描画は画面更新ごとにまとめる
@@ -684,25 +712,36 @@
   ["touchstart","touchmove","touchend","gesturestart"].forEach(t=>cv.addEventListener(t, e=>e.preventDefault(), {passive:false}));
   $("inkWrap").addEventListener("dblclick", e=>e.preventDefault());
   $("inkUndo").addEventListener("click", ()=>{ strokes.pop(); active.clear(); redraw(); });
-  $("inkClear").addEventListener("click", ()=>{ strokes=[]; active.clear(); redraw(); });
+  $("inkClear").addEventListener("click", ()=>{ strokes=[]; bg=null; active.clear(); redraw(); });
   window.addEventListener("resize", ()=>{ if(!$("memoSheet").classList.contains("hidden") && settings.memoTab==="ink") sizeInk(); });
 
   function inkToImage(){
-    if(!strokes.length) return null;
+    if(!strokes.length && !bg) return null;
     let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
     strokes.flat().forEach(p=>{ x0=Math.min(x0,p.x); y0=Math.min(y0,p.y); x1=Math.max(x1,p.x); y1=Math.max(y1,p.y); });
+    if(bg){ x0=Math.min(x0,bg.x+12); y0=Math.min(y0,bg.y+12); x1=Math.max(x1,bg.x+bg.w-12); y1=Math.max(y1,bg.y+bg.h-12); }
     const pad=12; x0-=pad; y0-=pad; x1+=pad; y1+=pad;
     const w=x1-x0, h=y1-y0, sc=Math.min(1, 700/w, 400/h) * 1.5;
     const oc=document.createElement("canvas"); oc.width=Math.ceil(w*sc); oc.height=Math.ceil(h*sc);
     const o=oc.getContext("2d"); o.fillStyle="#fff"; o.fillRect(0,0,oc.width,oc.height);
-    o.setTransform(sc,0,0,sc,-x0*sc,-y0*sc); o.strokeStyle="#2b3a30"; o.lineCap="round"; o.lineJoin="round";
+    o.setTransform(sc,0,0,sc,-x0*sc,-y0*sc);
+    if(bg) o.drawImage(bg.img, bg.x, bg.y, bg.w, bg.h);
+    o.strokeStyle="#2b3a30"; o.lineCap="round"; o.lineJoin="round";
     strokes.forEach(s=>{ for(let i=1;i<s.length;i++){ o.lineWidth=s[i].w; o.beginPath(); o.moveTo(s[i-1].x,s[i-1].y); o.lineTo(s[i].x,s[i].y); o.stroke(); } });
     return oc.toDataURL("image/png");
   }
   const panel=document.querySelector("#memoSheet .panel"), sheet=$("memoSheet");
   const wideMQ = window.matchMedia("(min-width: 600px)");
   let docked=false;
-  function clearMemo(){ $("memoInput").value=""; $("memoScribble").value=""; strokes=[]; active.clear(); if(settings.memoTab==="ink") redraw(); }
+  let editing=null; // 開いている以前のメモ（t）
+  function setEditing(m){
+    editing = m ? m.t : null;
+    const d = m ? new Date(m.t) : null;
+    $("editState").textContent = m ? `${d.getMonth()+1}/${d.getDate()} のメモを書き足し中` : "新しいメモ";
+    $("editState").classList.toggle("editing", !!m);
+    $("newBtn").classList.toggle("hidden", !m);
+  }
+  function clearMemo(){ $("memoInput").value=""; $("memoScribble").value=""; strokes=[]; bg=null; active.clear(); setEditing(null); if(settings.memoTab==="ink") redraw(); }
   function placeMemo(){
     const want = wideMQ.matches && visible("run");
     document.body.classList.toggle("wide", wideMQ.matches);
@@ -716,18 +755,67 @@
   let toastT=0;
   function toast(msg){ const t=$("toast"); t.textContent=msg; t.classList.add("on"); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove("on"),1400); }
   function openMemo(){
-    $("memoInput").value=""; $("memoScribble").value=""; strokes=[]; active.clear();
+    $("memoInput").value=""; $("memoScribble").value=""; strokes=[]; bg=null; active.clear(); setEditing(null);
     $("memoSheet").classList.remove("hidden"); setTab(settings.memoTab||"text");
   }
   function saveMemo(){
     const tab=settings.memoTab, t=Date.now();
-    if(tab==="ink"){ const img=inkToImage(); if(img) memos.push({t, img}); }
-    else { const v=(tab==="text"? $("memoInput").value : $("memoScribble").value).trim().replace(/\s*\n\s*/g," "); if(v) memos.push({t, text:v}); }
-    saveAll();
-    if(docked){ clearMemo(); toast("メモしました"); }
+    let m=null;
+    if(tab==="ink"){ const img=inkToImage(); if(img) m={t, img}; }
+    else { const v=(tab==="text"? $("memoInput").value : $("memoScribble").value).trim(); if(v) m={t, text:v}; }
+    const wasEdit = editing!=null;
+    if(m){
+      if(wasEdit){ const i=memos.findIndex(x=>x.t===editing); if(i>=0) memos.splice(i,1); } // 書き足したメモは一番新しい位置へ
+      memos.push(m);
+    }
+    saveAll(); renderMemos();
+    if(docked){ clearMemo(); if(m) toast(wasEdit? "書き足しました":"メモしました"); }
     else $("memoSheet").classList.add("hidden");
   }
-  document.querySelectorAll("#memoTabs button").forEach(b=>b.addEventListener("click",()=>setTab(b.dataset.tab, docked)));
+  document.querySelectorAll("#memoTabs button").forEach(b=>b.addEventListener("click",()=>{
+    // 文字入力⇔手書き→文字 を切り替えたら、書きかけの文字を引き継ぐ
+    const from=settings.memoTab, to=b.dataset.tab;
+    if(from!==to && from!=="ink" && to!=="ink"){
+      const src = from==="text"? $("memoInput") : $("memoScribble"), dst = to==="text"? $("memoInput") : $("memoScribble");
+      if(src.value && !dst.value){ dst.value = to==="text" ? src.value.replace(/\s*\n\s*/g," ") : src.value; src.value=""; }
+    }
+    setTab(to, docked);
+  }));
+  // ---------- これまでのメモを開いて書き足す ----------
+  function openPicker(){
+    const list=memos.slice().reverse();
+    $("pickList").innerHTML = list.length ? list.map(m=>memoHTML(m, memos.indexOf(m))).join("")
+      : `<li class="small" style="border:0">まだメモはありません</li>`;
+    $("picker").classList.remove("hidden");
+  }
+  function loadMemo(m){
+    strokes=[]; bg=null; active.clear(); $("memoInput").value=""; $("memoScribble").value="";
+    setEditing(m);
+    if(m.img){
+      setTab("ink", true);
+      const img=new Image();
+      img.onload=()=>{
+        const r=cv.getBoundingClientRect();
+        let w=img.naturalWidth/1.5, h=img.naturalHeight/1.5;
+        const k=Math.min(1, (r.width-24)/w, (r.height-24)/h); w*=k; h*=k;
+        bg={img, x:0, y:0, w, h}; redraw();
+      };
+      img.src=m.img;
+    } else {
+      const multi = m.text.includes("\n") || m.text.length>100;
+      const tab = (settings.memoTab==="scribble" || multi) ? "scribble" : "text";
+      setTab(tab, true);
+      (tab==="text"? $("memoInput") : $("memoScribble")).value = m.text;
+    }
+  }
+  $("pickBtn").addEventListener("click", openPicker);
+  $("pickClose").addEventListener("click", ()=>$("picker").classList.add("hidden"));
+  $("picker").addEventListener("click", e=>{ if(e.target.id==="picker") $("picker").classList.add("hidden"); });
+  $("pickList").addEventListener("click", e=>{
+    const li=e.target.closest("li[data-i]"); if(!li) return;
+    const m=memos[+li.dataset.i]; $("picker").classList.add("hidden"); if(m) loadMemo(m);
+  });
+  $("newBtn").addEventListener("click", clearMemo);
   $("memoBtn").addEventListener("click", openMemo);
   $("memoCancel").addEventListener("click", ()=>$("memoSheet").classList.add("hidden"));
   $("memoSave").addEventListener("click", saveMemo);
