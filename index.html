@@ -118,7 +118,7 @@
   #run:not(.docked) .runBtns{margin-top:24px}
   #dock{flex:1;min-height:0;margin-top:12px}
   #dock .panel{height:100%;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
-  #dock #memoCancel{display:none}
+  #dock #memoBottom{display:none}
   .wakeStat{margin:10px 0 0}
   #toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--green);color:#fff;
     padding:10px 18px;border-radius:999px;font-size:14px;z-index:30;opacity:0;transition:opacity .25s;pointer-events:none}
@@ -138,17 +138,10 @@
   <section id="home">
     <div class="top"><h1>My Desk</h1><button class="gear" id="toSettings">設定</button></div>
     <div class="card">
-      <div class="label">前回の「次にやること」</div>
-      <div id="nextText" class="next empty">まだありません</div>
-    </div>
-
-    <div class="card">
       <div class="label" id="todayLabel">今日の枠</div>
       <div class="today" id="todayStat"></div>
       <div class="note hidden" id="offNote"></div>
-    </div>
-
-    <div class="card" id="endCard">
+      <div id="endCard" style="margin-top:16px;padding-top:14px;border-top:1px solid var(--line)">
       <div class="label">今日は何時まで？（先に決めます）</div>
       <input type="time" id="endTime">
       <div class="chips">
@@ -158,6 +151,12 @@
       </div>
       <div id="endInfo" class="small" style="margin-top:10px"></div>
       <div id="lateNote" class="note hidden">夜遅めの時間です。今日は短めにして、続きは明日に回すのも手です。</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="label">前回の「次にやること」</div>
+      <div id="nextText" class="next empty">まだありません</div>
     </div>
 
     <button class="btn main" id="startBtn">はじめる</button>
@@ -190,9 +189,6 @@
         <thead><tr><th></th><th>作業の上限</th><th id="extHead">延長</th></tr></thead>
         <tbody id="dayRows"></tbody>
       </table>
-      <div class="row" style="margin-top:10px">
-        <button class="chip" id="copyTue">火曜の値を全曜日にコピー</button>
-      </div>
     </div>
 
     <div class="card">
@@ -201,20 +197,6 @@
       <div class="row" style="margin-top:8px"><span class="grow small">休憩</span><input type="number" id="restMin" min="1" max="30"><span class="small">分</span></div>
     </div>
 
-    <div class="card">
-      <div class="label">作業中は画面を暗くする（ショートカット連携）</div>
-      <div class="seg" id="watchSeg">
-        <button data-w="off">オフ</button>
-        <button data-w="on">オン</button>
-      </div>
-      <p class="small" id="dimState" style="margin:8px 0 0"></p>
-      <div id="watchBox" class="hidden" style="margin-top:10px">
-        <div class="row"><span class="grow small">はじめる時に動かす</span><input type="text" id="scName" style="width:150px"></div>
-        <div class="row" style="margin-top:8px"><span class="grow small">終える時に動かす</span><input type="text" id="scEnd" style="width:150px"></div>
-        <p class="small">「はじめる」「延長」を押すと開始用のショートカットを、「ここで終える」「次にやることを書いて終える」「もう一枠」を押すと終了用のショートカットを動かします。開始用には終わりまでの分数を渡すので、明るさを下げるほか、タイマーのセットにも使えます。動いたあとは、画面左上の「◀ My Desk」で戻ってきます。名前を空にすると、そのショートカットは動かしません。</p>
-        <p class="small" id="watchWarn"></p>
-      </div>
-    </div>
   </section>
 
   <!-- 作業中 -->
@@ -282,7 +264,7 @@
     <div class="row editRow">
       <span class="small grow" id="editState">新しいメモ</span>
       <button class="chip" id="pickBtn">これまでのメモ</button>
-      <button class="chip hidden" id="newBtn">新しく書く</button>
+      <button class="chip" id="newBtn">新しく書く</button>
     </div>
     <div class="memoArea">
       <div data-pane="text" style="height:100%">
@@ -293,13 +275,12 @@
       </div>
       <div data-pane="ink" style="height:100%">
         <div id="inkWrap"><canvas id="ink"></canvas>
-          <div class="inkTools"><button id="inkUndo">1つ戻す</button><button id="inkClear">全部消す</button></div>
+          <div class="inkTools"><button id="inkUndo">1つ戻す</button><button id="inkClear">このメモを消す</button></div>
         </div>
       </div>
     </div>
-    <div class="row">
-      <button class="btn ghost grow" id="memoCancel">戻る</button>
-      <button class="btn main grow" id="memoSave" style="margin-top:0">メモして戻る</button>
+    <div class="row" id="memoBottom">
+      <button class="btn main grow" id="memoCancel">閉じる</button>
     </div>
   </div>
 </div>
@@ -442,18 +423,6 @@
 
   // ショートカット連携（Apple Watch / iPhoneのバイブ）
   const inFrame = (()=>{ try{ return window.top!==window.self; }catch(e){ return true; } })();
-  // x-success で戻すとSafariが開いてしまう（ホーム画面のアプリと保存場所が別）ため、戻りは左上の「◀ My Desk」に任せる
-  function runShortcut(name, text){
-    if(!settings.watch || !name || inFrame) return;
-    let url = "shortcuts://run-shortcut?name="+encodeURIComponent(name);
-    if(text!=null && text!=="") url += "&input=text&text="+encodeURIComponent(text);
-    try{ location.href = url; }catch(e){}
-  }
-  function sendToWatch(){
-    if(!S) return;
-    runShortcut(settings.scName, String(Math.max(1, Math.round((S.end-Date.now())/60000))));
-  }
-  const shortcutEnd = () => runShortcut(settings.scEnd, "");
 
   // ---------- 画面切り替え ----------
   const SECTIONS=["home","settings","run","timeup","finish"];
@@ -533,7 +502,6 @@
     S = { start:now, first, w:settings.work*60000, r:settings.rest*60000, end:endTsVal, day:dayKey(now),
           reason, lastIdx:0, tip: REST_TIPS[Math.floor(Math.random()*REST_TIPS.length)], closed:false };
     saveAll(); keepAwake(true); show("run"); tick();
-    sendToWatch();
   }
   $("startBtn").addEventListener("click", ()=>{
     unlockAudio();
@@ -580,7 +548,7 @@
   }
   setInterval(()=>{ if(visible("run")) tick(); }, 1000);
   document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible" && visible("run")){ keepAwake(true); tick(); } });
-  $("stopBtn").addEventListener("click", ()=>{ closeSession(Date.now()); S.stopped=true; saveAll(); keepAwake(false); openFinish(); shortcutEnd(); });
+  $("stopBtn").addEventListener("click", ()=>{ flushSave(); closeSession(Date.now()); S.stopped=true; saveAll(); keepAwake(false); openFinish(); });
 
   // ---------- 時間切れ ----------
   function renderTimeup(){
@@ -604,8 +572,8 @@
     const now=Date.now(), w=settings.work*60000, r=settings.rest*60000;
     startSession("rest", timeForWork(now, "rest", w, r, add), "ext"); // 延長は休憩から
   }));
-  $("toEndBtn").addEventListener("click", ()=>{ if(S){ S.stopped=true; saveAll(); } openFinish(); shortcutEnd(); });
-  $("againBtn").addEventListener("click", ()=>{ S=null; saveAll(); $("endTime").value=""; renderHome(); shortcutEnd(); });
+  $("toEndBtn").addEventListener("click", ()=>{ if(S){ S.stopped=true; saveAll(); } openFinish(); });
+  $("againBtn").addEventListener("click", ()=>{ S=null; saveAll(); $("endTime").value=""; renderHome(); });
 
   // ---------- 終了メモ ----------
   function openFinish(){ $("nextInput").value=""; show("finish"); setTimeout(()=>$("nextInput").focus(),50); }
@@ -622,7 +590,7 @@
     for(let i=0;i<=12;i++) h.add(new Option(i, i));
     [0,15,30,45].forEach(i=>m.add(new Option(String(i).padStart(2,"0"), i)));
     h.value=Math.floor(val/60); m.value=[0,15,30,45].includes(val%60)? val%60 : 0;
-    const fire=()=>onchange(+h.value*60 + +m.value);
+    const fire=e=>{ onchange(+h.value*60 + +m.value); e && e.target && e.target.blur(); };
     h.onchange=fire; m.onchange=fire;
     wrap.append(h,"時間",m,"分"); return wrap;
   }
@@ -633,7 +601,7 @@
     $("extHead").classList.toggle("hidden", !per);
     $("extCommonSel").replaceChildren(hourSel(settings.extCommon, v=>{settings.extCommon=v; saveAll();}));
     const tb=$("dayRows"); tb.replaceChildren();
-    [2,3,4,5,6,0,1].forEach(d=>{ // 火曜はじまり（休日の日・月を最後に）
+    [1,2,3,4,5,6,0].forEach(d=>{ // 月曜はじまり
       const tr=document.createElement("tr");
       const td0=document.createElement("td"); td0.className="d"+(d===0?" sun":""); td0.textContent=DAYS[d];
       const td1=document.createElement("td"); td1.append(hourSel(settings.base[d], v=>{settings.base[d]=v; saveAll();}));
@@ -642,21 +610,13 @@
       tr.append(td0,td1,td2); tb.append(tr);
     });
     $("workMin").value=settings.work; $("restMin").value=settings.rest;
-    document.querySelectorAll("#watchSeg button").forEach(b=>b.classList.toggle("on", (b.dataset.w==="on")===settings.watch));
-    $("dimState").textContent = settings.watch ? "はじめる時に暗くし、終える時に元に戻します。" : "明るさは変えません。";
-    $("watchBox").classList.toggle("hidden", !settings.watch);
-    $("scName").value=settings.scName; $("scEnd").value=settings.scEnd;
-    $("watchWarn").textContent = inFrame ? "※ いま開いているClaudeのページからは連携できません。ホーム画面に追加した「My Desk」から使えます。" : "";
   }
   $("toSettings").addEventListener("click", ()=>{ renderSettings(); show("settings"); });
   $("backHome").addEventListener("click", renderHome);
   document.querySelectorAll("#extModeSeg button").forEach(b=>b.addEventListener("click",()=>{ settings.extMode=b.dataset.mode; saveAll(); renderSettings(); }));
-  document.querySelectorAll("#watchSeg button").forEach(b=>b.addEventListener("click",()=>{ settings.watch=b.dataset.w==="on"; saveAll(); renderSettings(); }));
-  $("copyTue").addEventListener("click",()=>{ for(let d=0;d<7;d++){ settings.base[d]=settings.base[2]; settings.extDay[d]=settings.extDay[2]; } saveAll(); renderSettings(); });
-  $("workMin").addEventListener("change",e=>{ settings.work=Math.min(120,Math.max(5,+e.target.value||50)); e.target.value=settings.work; saveAll(); });
-  $("restMin").addEventListener("change",e=>{ settings.rest=Math.min(30,Math.max(1,+e.target.value||10)); e.target.value=settings.rest; saveAll(); });
-  $("scName").addEventListener("change",e=>{ settings.scName=e.target.value.trim(); saveAll(); });
-  $("scEnd").addEventListener("change",e=>{ settings.scEnd=e.target.value.trim(); saveAll(); });
+  $("workMin").addEventListener("change",e=>{ settings.work=Math.min(120,Math.max(5,+e.target.value||50)); e.target.value=settings.work; saveAll(); e.target.blur(); });
+  $("restMin").addEventListener("change",e=>{ settings.rest=Math.min(30,Math.max(1,+e.target.value||10)); e.target.value=settings.rest; saveAll(); e.target.blur(); });
+  ["workMin","restMin"].forEach(id=>$(id).addEventListener("keydown",e=>{ if(e.key==="Enter") e.target.blur(); }));
 
   // ---------- メモ（文字／手書き→文字／手書きのまま） ----------
   const cv=$("ink"), ctx=cv.getContext("2d");
@@ -712,7 +672,6 @@
   ["touchstart","touchmove","touchend","gesturestart"].forEach(t=>cv.addEventListener(t, e=>e.preventDefault(), {passive:false}));
   $("inkWrap").addEventListener("dblclick", e=>e.preventDefault());
   $("inkUndo").addEventListener("click", ()=>{ strokes.pop(); active.clear(); redraw(); });
-  $("inkClear").addEventListener("click", ()=>{ strokes=[]; bg=null; active.clear(); redraw(); });
   window.addEventListener("resize", ()=>{ if(!$("memoSheet").classList.contains("hidden") && settings.memoTab==="ink") sizeInk(); });
 
   function inkToImage(){
@@ -733,53 +692,86 @@
   const panel=document.querySelector("#memoSheet .panel"), sheet=$("memoSheet");
   const wideMQ = window.matchMedia("(min-width: 600px)");
   let docked=false;
-  let editing=null; // 開いている以前のメモ（t）
-  function setEditing(m){
-    editing = m ? m.t : null;
-    const d = m ? new Date(m.t) : null;
-    $("editState").textContent = m ? `${d.getMonth()+1}/${d.getDate()} のメモを書き足し中` : "新しいメモ";
-    $("editState").classList.toggle("editing", !!m);
-    $("newBtn").classList.toggle("hidden", !m);
+  // ---------- メモ：書いたそばから自動保存 ----------
+  const mid = m => m.id ?? m.t;
+  let editing=null;   // いま書いているメモのid（まだ保存していなければnull）
+  let loadedFrom=null; // 以前のメモを開いた場合、その日付
+  let saveT=0, lastSaved=0;
+  function stateText(){
+    const el=$("editState");
+    if(editing==null){ el.textContent = loadedFrom ? "" : "新しいメモ（書くと自動で保存）"; el.classList.remove("editing"); return; }
+    const d = loadedFrom ? new Date(loadedFrom) : null;
+    el.textContent = (d ? `${d.getMonth()+1}/${d.getDate()} のメモに書き足し中・` : "") + "自動保存済み " + hm(lastSaved||Date.now());
+    el.classList.toggle("editing", !!d);
   }
+  function setEditing(m){ editing = m ? mid(m) : null; loadedFrom = m ? m.t : null; stateText(); }
+  function currentContent(){
+    const tab=settings.memoTab;
+    if(tab==="ink"){ const img=inkToImage(); return img ? {img} : null; }
+    const v=(tab==="text"? $("memoInput").value : $("memoScribble").value).trim();
+    return v ? {text:v} : null;
+  }
+  function doSave(){
+    saveT=0;
+    const c=currentContent(), now=Date.now();
+    const i = editing==null ? -1 : memos.findIndex(x=>mid(x)===editing);
+    if(c){
+      const m = Object.assign({id: editing ?? now, t: now}, c);
+      if(i>=0) memos.splice(i,1);
+      memos.push(m); editing=m.id; lastSaved=now;
+    } else if(i>=0){ // 中身を全部消した → メモも消す
+      memos.splice(i,1); editing=null; loadedFrom=null; toast("メモを消しました");
+    }
+    saveAll(); stateText();
+    if(visible("home")) renderMemos();
+  }
+  function scheduleSave(ms){ clearTimeout(saveT); saveT=setTimeout(doSave, ms); }
+  function flushSave(){ if(saveT){ clearTimeout(saveT); doSave(); } }
   function clearMemo(){ $("memoInput").value=""; $("memoScribble").value=""; strokes=[]; bg=null; active.clear(); setEditing(null); if(settings.memoTab==="ink") redraw(); }
+  function nextMemo(){ flushSave(); const had=editing!=null; clearMemo(); if(had) toast("保存しました。次のメモへ"); }
   function placeMemo(){
     const want = wideMQ.matches && visible("run");
     document.body.classList.toggle("wide", wideMQ.matches);
     if(want===docked) { if(want && settings.memoTab==="ink") requestAnimationFrame(sizeInk); return; }
     docked=want;
     $("run").classList.toggle("docked", want);
-    if(want){ $("dock").append(panel); sheet.classList.add("hidden"); $("memoSave").textContent="メモする"; clearMemo(); setTab(settings.memoTab||"text", true); }
-    else { sheet.append(panel); $("memoSave").textContent="メモして戻る"; }
+    if(want){ $("dock").append(panel); sheet.classList.add("hidden"); flushSave(); clearMemo(); setTab(settings.memoTab||"text", true); }
+    else { sheet.append(panel); }
   }
+  wideMQ.addEventListener ? wideMQ.addEventListener("change", placeMemo) : wideMQ.addListener(placeMemo);
   wideMQ.addEventListener ? wideMQ.addEventListener("change", placeMemo) : wideMQ.addListener(placeMemo);
   let toastT=0;
   function toast(msg){ const t=$("toast"); t.textContent=msg; t.classList.add("on"); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove("on"),1400); }
   function openMemo(){
-    $("memoInput").value=""; $("memoScribble").value=""; strokes=[]; bg=null; active.clear(); setEditing(null);
+    flushSave(); clearMemo();
     $("memoSheet").classList.remove("hidden"); setTab(settings.memoTab||"text");
   }
-  function saveMemo(){
-    const tab=settings.memoTab, t=Date.now();
-    let m=null;
-    if(tab==="ink"){ const img=inkToImage(); if(img) m={t, img}; }
-    else { const v=(tab==="text"? $("memoInput").value : $("memoScribble").value).trim(); if(v) m={t, text:v}; }
-    const wasEdit = editing!=null;
-    if(m){
-      if(wasEdit){ const i=memos.findIndex(x=>x.t===editing); if(i>=0) memos.splice(i,1); } // 書き足したメモは一番新しい位置へ
-      memos.push(m);
-    }
-    saveAll(); renderMemos();
-    if(docked){ clearMemo(); if(m) toast(wasEdit? "書き足しました":"メモしました"); }
-    else $("memoSheet").classList.add("hidden");
-  }
+  function closeMemo(){ flushSave(); $("memoSheet").classList.add("hidden"); }
+  ["memoInput","memoScribble"].forEach(id=>$(id).addEventListener("input", ()=>scheduleSave(600)));
+  cv.addEventListener("pointerup", ()=>scheduleSave(700));
+  cv.addEventListener("pointercancel", ()=>scheduleSave(700));
+  $("inkUndo").addEventListener("click", ()=>scheduleSave(700));
+  let clearArmed=0;
+  $("inkClear").addEventListener("click", e=>{
+    const b=e.currentTarget;
+    if(!clearArmed){ b.textContent="本当に消す"; clearArmed=setTimeout(()=>{ b.textContent="このメモを消す"; clearArmed=0; },3000); return; }
+    clearTimeout(clearArmed); clearArmed=0; b.textContent="このメモを消す";
+    strokes=[]; bg=null; active.clear(); redraw(); scheduleSave(0);
+  });
+  document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="hidden") flushSave(); });
+  window.addEventListener("pagehide", flushSave);
   document.querySelectorAll("#memoTabs button").forEach(b=>b.addEventListener("click",()=>{
-    // 文字入力⇔手書き→文字 を切り替えたら、書きかけの文字を引き継ぐ
     const from=settings.memoTab, to=b.dataset.tab;
-    if(from!==to && from!=="ink" && to!=="ink"){
+    if(from===to) return;
+    if(from!=="ink" && to!=="ink"){
+      // 文字入力⇔手書き→文字：書きかけの文字を引き継いで、同じメモとして続ける
       const src = from==="text"? $("memoInput") : $("memoScribble"), dst = to==="text"? $("memoInput") : $("memoScribble");
       if(src.value && !dst.value){ dst.value = to==="text" ? src.value.replace(/\s*\n\s*/g," ") : src.value; src.value=""; }
+      setTab(to, docked);
+    } else {
+      // 文字⇔手書きのまま：いまのメモを保存して、新しいメモにする
+      flushSave(); setTab(to, docked); clearMemo();
     }
-    setTab(to, docked);
   }));
   // ---------- これまでのメモを開いて書き足す ----------
   function openPicker(){
@@ -789,6 +781,7 @@
     $("picker").classList.remove("hidden");
   }
   function loadMemo(m){
+    flushSave();
     strokes=[]; bg=null; active.clear(); $("memoInput").value=""; $("memoScribble").value="";
     setEditing(m);
     if(m.img){
@@ -808,18 +801,17 @@
       (tab==="text"? $("memoInput") : $("memoScribble")).value = m.text;
     }
   }
-  $("pickBtn").addEventListener("click", openPicker);
+  $("pickBtn").addEventListener("click", ()=>{ flushSave(); openPicker(); });
   $("pickClose").addEventListener("click", ()=>$("picker").classList.add("hidden"));
   $("picker").addEventListener("click", e=>{ if(e.target.id==="picker") $("picker").classList.add("hidden"); });
   $("pickList").addEventListener("click", e=>{
     const li=e.target.closest("li[data-i]"); if(!li) return;
     const m=memos[+li.dataset.i]; $("picker").classList.add("hidden"); if(m) loadMemo(m);
   });
-  $("newBtn").addEventListener("click", clearMemo);
+  $("newBtn").addEventListener("click", nextMemo);
   $("memoBtn").addEventListener("click", openMemo);
-  $("memoCancel").addEventListener("click", ()=>$("memoSheet").classList.add("hidden"));
-  $("memoSave").addEventListener("click", saveMemo);
-  $("memoInput").addEventListener("keydown", e=>{ if(e.key==="Enter" && !e.isComposing) saveMemo(); });
+  $("memoCancel").addEventListener("click", closeMemo);
+  $("memoInput").addEventListener("keydown", e=>{ if(e.key==="Enter" && !e.isComposing){ e.preventDefault(); nextMemo(); } });
 
   // ---------- メモを大きく見る ----------
   let vIdx=-1, delArmed=false;
