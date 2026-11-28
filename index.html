@@ -29,6 +29,10 @@
   .label{font-size:12px;color:var(--sub);margin-bottom:6px}
   .next{font-size:17px;line-height:1.5;color:var(--green)}
   .next.empty{color:var(--sub);font-size:14px}
+  textarea.nextEdit{font-size:17px;line-height:1.5;color:var(--green);border:1px solid transparent;background:transparent;
+    padding:6px 8px;margin:-6px -8px;width:calc(100% + 16px);resize:none;overflow:hidden;border-radius:10px;display:block}
+  textarea.nextEdit:focus{border-color:var(--line);background:#fff;outline:none}
+  textarea.nextEdit::placeholder{color:var(--sub);font-size:14px}
   .row{display:flex;gap:10px;align-items:center}
   .grow{flex:1}
   input[type=time],input[type=text],input[type=number],select,textarea{
@@ -142,7 +146,7 @@
       <div class="today" id="todayStat"></div>
       <div class="note hidden" id="offNote"></div>
       <div id="endCard" style="margin-top:16px;padding-top:14px;border-top:1px solid var(--line)">
-      <div class="label">今日は何時まで？（先に決めます）</div>
+      <div class="label">今回は何時まで？（先に決めます）</div>
       <input type="time" id="endTime">
       <div class="chips">
         <button class="chip" data-add="15">15分だけ</button>
@@ -155,8 +159,8 @@
     </div>
 
     <div class="card">
-      <div class="label">前回の「次にやること」</div>
-      <div id="nextText" class="next empty">まだありません</div>
+      <div class="row"><div class="label grow" style="margin:0 0 6px">前回の「次にやること」</div><span class="small" id="nextSaved">タップで直せます</span></div>
+      <textarea id="nextText" class="nextEdit" rows="1" maxlength="200" placeholder="まだありません（ここに書けます）"></textarea>
     </div>
 
     <button class="btn main" id="startBtn">はじめる</button>
@@ -487,9 +491,18 @@
     $("memoListHome").innerHTML = list.length ? list.slice(0,30).map(m=>memoHTML(m, memos.indexOf(m))).join("")
       : `<li class="small" style="border:0">作業中に浮かんだことは、ここにたまります</li>`;
   }
+  // トップ画面で「次にやること」を直す（書いたそばから保存）
+  function fitNext(){ const t=$("nextText"); t.style.height="auto"; t.style.height=t.scrollHeight+"px"; }
+  let nextT=0;
+  $("nextText").addEventListener("input", ()=>{
+    fitNext(); clearTimeout(nextT);
+    nextT=setTimeout(()=>{ next=$("nextText").value.trim(); saveAll(); $("nextSaved").textContent="保存しました"; setTimeout(()=>$("nextSaved").textContent="タップで直せます",1500); },500);
+  });
+  $("nextText").addEventListener("blur", ()=>{ clearTimeout(nextT); next=$("nextText").value.trim(); $("nextText").value=next; saveAll(); fitNext(); });
+  $("nextText").addEventListener("keydown", e=>{ if(e.key==="Enter" && !e.isComposing){ e.preventDefault(); e.target.blur(); } });
   function renderHome(){
-    $("nextText").textContent = next || "まだありません";
-    $("nextText").classList.toggle("empty", !next);
+    if(document.activeElement!==$("nextText")) $("nextText").value = next || "";
+    requestAnimationFrame(fitNext);
     if(!$("endTime").value) $("endTime").value = defaultEnd(60);
     updateEndInfo(); renderMemos(); show("home");
   }
